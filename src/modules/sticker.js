@@ -1,0 +1,524 @@
+import { saveStickers, loadStickers } from './storage.js';
+
+let stickers = [];
+let maxZIndex = 10;
+
+// 行動端當前的篩選條件
+let currentFilterColor = 'all';
+let currentSearchQuery = '';
+
+/**
+ * 初始化便利貼模組
+ */
+export function initStickers() {
+  stickers = loadStickers();
+  
+  // 計算當前的最大 zIndex，避免重疊順序錯亂
+  if (stickers.length > 0) {
+    maxZIndex = Math.max(...stickers.map(s => s.zIndex || 10)) + 1;
+  }
+  
+  renderAll();
+  setupEvents();
+}
+
+/**
+ * 取得當前所有貼紙資料
+ */
+export function getStickers() {
+  return stickers;
+}
+
+/**
+ * 設定全域事件監聽（如行動版的搜尋與過濾）
+ */
+function setupEvents() {
+  // 電腦版新增按鈕
+  const btnAdd = document.getElementById('btn-add-sticker');
+  if (btnAdd) {
+    btnAdd.addEventListener('click', () => createNewSticker());
+  }
+
+  // 手機版新增按鈕
+  const btnMobileAdd = document.getElementById('btn-mobile-add');
+  if (btnMobileAdd) {
+    btnMobileAdd.addEventListener('click', () => createNewSticker());
+  }
+
+  // 手機版搜尋
+  const mobileSearch = document.getElementById('mobile-search');
+  if (mobileSearch) {
+    mobileSearch.addEventListener('input', (e) => {
+      currentSearchQuery = e.target.value.toLowerCase();
+      renderMobileGrid();
+    });
+  }
+
+  // 手機版顏色篩選
+  const colorFilters = document.querySelectorAll('.color-filter');
+  colorFilters.forEach(filter => {
+    filter.addEventListener('click', (e) => {
+      colorFilters.forEach(f => f.classList.remove('active'));
+      e.target.classList.add('active');
+      currentFilterColor = e.target.getAttribute('data-color');
+      renderMobileGrid();
+    });
+  });
+
+  // 監聽視窗縮放，如果是大螢幕且有便利貼超出邊界，做一下適當的位移
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+      let changed = false;
+      stickers.forEach(s => {
+        const maxX = window.innerWidth - (s.width || 250);
+        const maxY = window.innerHeight - (s.height || 220);
+        if (s.x > maxX && maxX > 0) { s.x = Math.max(10, maxX - 20); changed = true; }
+        if (s.y > maxY && maxY > 0) { s.y = Math.max(10, maxY - 20); changed = true; }
+      });
+      if (changed) {
+        saveStickers(stickers);
+        renderDesktopContainer();
+      }
+    }
+  });
+}
+
+/**
+ * 建立一個全新便利貼並渲染
+ */
+export function createNewSticker() {
+  // 隨機在畫面中央偏左上位置產生，避免重疊
+  const randomOffset = Math.floor(Math.random() * 60) - 30;
+  const x = Math.max(40, Math.floor(window.innerWidth / 2 - 125) + randomOffset);
+  const y = Math.max(40, Math.floor(window.innerHeight / 2 - 110) + randomOffset);
+
+  const newSticker = {
+    id: 'sticker_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+    type: 'text', // 'text' 或 'todo'
+    content: '寫點東西吧...',
+    todos: [
+      { id: 'todo_' + Date.now() + '_1', text: '待辦項目 1', done: false }
+    ],
+    x: x,
+    y: y,
+    width: 250,
+    height: 220,
+    color: ['yellow', 'pink', 'blue', 'green', 'purple'][Math.floor(Math.random() * 5)],
+    zIndex: ++maxZIndex
+  };
+
+  stickers.push(newSticker);
+  saveStickers(stickers);
+  renderAll();
+}
+
+/**
+ * 渲染電腦與手機雙版本視圖
+ */
+export function renderAll() {
+  renderDesktopContainer();
+  renderMobileGrid();
+}
+
+/**
+ * 渲染電腦端桌面視圖
+ */
+function renderDesktopContainer() {
+  const container = document.getElementById('sticker-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  stickers.forEach(s => {
+    const el = createStickerDOM(s, false);
+    container.appendChild(el);
+  });
+}
+
+/**
+ * 渲染手機端卡片網格視圖
+ */
+function renderMobileGrid() {
+  const grid = document.getElementById('mobile-sticker-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  // 篩選與搜尋
+  const filtered = stickers.filter(s => {
+    // 顏色過濾
+    const matchColor = (currentFilterColor === 'all' || s.color === currentFilterColor);
+    
+    // 文字搜尋
+    let matchText = false;
+    if (s.type === 'text') {
+      matchText = s.content.toLowerCase().includes(currentSearchQuery);
+    } else {
+      matchText = s.todos.some(t => t.text.toLowerCase().includes(currentSearchQuery));
+    }
+    
+    return matchColor && (currentSearchQuery === '' || matchText);
+  });
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div style="text-align:center; color:var(--text-secondary); padding:40px 0; font-size:0.9rem;">沒有找到符合的便利貼</div>`;
+    return;
+  }
+
+  filtered.forEach(s => {
+    const el = createStickerDOM(s, true);
+    grid.appendChild(el);
+  });
+}
+
+/**
+ * 建立便利貼的 HTML 元素
+ * @param {Object} s - 便利貼資料
+ * @param {Boolean} isMobile - 是否為行動端模式
+ */
+function createStickerDOM(s, isMobile) {
+  const sticker = document.createElement('div');
+  sticker.className = `sticker note-${s.color}`;
+  sticker.id = s.id;
+  
+  if (!isMobile) {
+    sticker.style.left = `${s.x}px`;
+    sticker.style.top = `${s.y}px`;
+    sticker.style.width = `${s.width}px`;
+    sticker.style.height = `${s.height}px`;
+    sticker.style.zIndex = s.zIndex || 10;
+  }
+
+  // 標頭區 (顏色選擇器 + 模式切換 + 刪除)
+  const header = document.createElement('div');
+  header.className = 'sticker-header';
+  
+  const colors = ['yellow', 'pink', 'blue', 'green', 'purple'];
+  const colorSelector = document.createElement('div');
+  colorSelector.className = 'sticker-color-selector';
+  
+  colors.forEach(col => {
+    const dot = document.createElement('div');
+    dot.className = `color-dot ${col}`;
+    dot.addEventListener('click', (e) => {
+      e.stopPropagation();
+      s.color = col;
+      saveStickers(stickers);
+      renderAll();
+    });
+    colorSelector.appendChild(dot);
+  });
+  
+  const actions = document.createElement('div');
+  actions.className = 'sticker-actions';
+  
+  // 模式切換按鈕 (文字 / 清單)
+  const btnType = document.createElement('button');
+  btnType.className = 'sticker-btn';
+  btnType.title = s.type === 'text' ? '切換為待辦清單' : '切換為純文字';
+  btnType.innerHTML = s.type === 'text' ? '📋' : '✍';
+  btnType.addEventListener('click', (e) => {
+    e.stopPropagation();
+    s.type = s.type === 'text' ? 'todo' : 'text';
+    // 若轉換為 todo 且為空，給予預設值
+    if (s.type === 'todo' && s.todos.length === 0) {
+      s.todos = [{ id: 'todo_' + Date.now(), text: '待辦項目 1', done: false }];
+    }
+    saveStickers(stickers);
+    renderAll();
+  });
+  
+  // 刪除按鈕
+  const btnDelete = document.createElement('button');
+  btnDelete.className = 'sticker-btn';
+  btnDelete.title = '刪除便利貼';
+  btnDelete.innerHTML = '🗑';
+  btnDelete.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (confirm('確定要刪除這張便利貼嗎？')) {
+      stickers = stickers.filter(item => item.id !== s.id);
+      saveStickers(stickers);
+      renderAll();
+    }
+  });
+
+  actions.appendChild(btnType);
+  actions.appendChild(btnDelete);
+  header.appendChild(colorSelector);
+  header.appendChild(actions);
+  sticker.appendChild(header);
+
+  // 內容編輯區
+  const body = document.createElement('div');
+  body.className = 'sticker-body';
+
+  if (s.type === 'text') {
+    // 渲染純文字 (支援 markdown 粗體與斜體)
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'sticker-content';
+    contentDiv.innerHTML = formatMarkdown(s.content);
+    
+    const textarea = document.createElement('textarea');
+    textarea.className = 'sticker-textarea';
+    textarea.value = s.content;
+
+    // 電腦版點擊編輯，手機版也點擊編輯
+    const startEdit = () => {
+      contentDiv.style.display = 'none';
+      textarea.style.display = 'block';
+      textarea.focus();
+      // 將游標移到最後
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    };
+
+    contentDiv.addEventListener('click', startEdit);
+
+    const finishEdit = () => {
+      s.content = textarea.value;
+      contentDiv.innerHTML = formatMarkdown(s.content);
+      contentDiv.style.display = 'block';
+      textarea.style.display = 'none';
+      saveStickers(stickers);
+      // 若是手機端更新，同步渲染手機網格與電腦視圖
+      renderAll();
+    };
+
+    textarea.addEventListener('blur', finishEdit);
+    // 按 Esc 放棄編輯或完成編輯
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        textarea.blur();
+      }
+    });
+
+    body.appendChild(contentDiv);
+    body.appendChild(textarea);
+  } else {
+    // 待辦清單模式
+    const todoList = document.createElement('ul');
+    todoList.className = 'todo-list';
+
+    s.todos.forEach((todo, idx) => {
+      const todoItem = document.createElement('li');
+      todoItem.className = `todo-item ${todo.done ? 'done' : ''}`;
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'todo-checkbox';
+      checkbox.checked = todo.done;
+      checkbox.addEventListener('change', () => {
+        todo.done = checkbox.checked;
+        todoItem.className = `todo-item ${todo.done ? 'done' : ''}`;
+        saveStickers(stickers);
+        // 更新另一端視圖
+        renderAll();
+      });
+
+      const todoText = document.createElement('div');
+      todoText.className = 'todo-text';
+      todoText.contentEditable = true;
+      todoText.innerText = todo.text;
+      todoText.addEventListener('blur', () => {
+        todo.text = todoText.innerText;
+        // 如果內容為空且不是最後一項，則刪除該項目
+        if (todo.text.trim() === '' && s.todos.length > 1) {
+          s.todos.splice(idx, 1);
+        }
+        saveStickers(stickers);
+        renderAll();
+      });
+
+      todoText.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          todoText.blur();
+          // 新增一個新的 todo 項目到它後面
+          s.todos.splice(idx + 1, 0, {
+            id: 'todo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 3),
+            text: '',
+            done: false
+          });
+          saveStickers(stickers);
+          renderAll();
+          // 聚焦至新產生的輸入項目
+          setTimeout(() => {
+            const nextStickerDOM = document.getElementById(s.id);
+            if (nextStickerDOM) {
+              const editableItems = nextStickerDOM.querySelectorAll('.todo-text');
+              if (editableItems[idx + 1]) {
+                editableItems[idx + 1].focus();
+              }
+            }
+          }, 50);
+        }
+      });
+
+      todoItem.appendChild(checkbox);
+      todoItem.appendChild(todoText);
+      todoList.appendChild(todoItem);
+    });
+
+    // 「+ 新增項目」按鈕
+    const btnAddTodo = document.createElement('div');
+    btnAddTodo.className = 'todo-item';
+    btnAddTodo.style.opacity = '0.5';
+    btnAddTodo.style.cursor = 'pointer';
+    btnAddTodo.innerHTML = `<span style="font-size:1.2rem;">+</span> <span style="font-size:0.9rem;">新增項目</span>`;
+    btnAddTodo.addEventListener('click', () => {
+      s.todos.push({
+        id: 'todo_' + Date.now(),
+        text: '',
+        done: false
+      });
+      saveStickers(stickers);
+      renderAll();
+      // 聚焦至最新項目
+      setTimeout(() => {
+        const currentStickerDOM = document.getElementById(s.id);
+        if (currentStickerDOM) {
+          const editableItems = currentStickerDOM.querySelectorAll('.todo-text');
+          if (editableItems.length > 0) {
+            editableItems[editableItems.length - 1].focus();
+          }
+        }
+      }, 50);
+    });
+
+    todoList.appendChild(btnAddTodo);
+    body.appendChild(todoList);
+  }
+
+  sticker.appendChild(body);
+
+  // 電腦版才有的功能：拖曳、點擊提升層次、右下角縮放
+  if (!isMobile) {
+    // 1. 提升層級 zIndex
+    sticker.addEventListener('mousedown', () => {
+      if (s.zIndex !== maxZIndex) {
+        s.zIndex = ++maxZIndex;
+        sticker.style.zIndex = s.zIndex;
+        saveStickers(stickers);
+      }
+    });
+
+    // 2. 拖曳邏輯
+    sticker.addEventListener('mousedown', (e) => {
+      // 如果點擊到按鈕、輸入框、或縮放點，就不觸發拖曳
+      if (
+        e.target.closest('.sticker-actions') || 
+        e.target.closest('.sticker-color-selector') ||
+        e.target.closest('.sticker-resizer') ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.getAttribute('contenteditable') === 'true' ||
+        e.target.classList.contains('todo-checkbox')
+      ) {
+        return;
+      }
+      
+      e.preventDefault();
+      
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const initialLeft = s.x;
+      const initialTop = s.y;
+
+      const onMouseMove = (moveEvt) => {
+        const dx = moveEvt.clientX - startX;
+        const dy = moveEvt.clientY - startY;
+        
+        let newX = initialLeft + dx;
+        let newY = initialTop + dy;
+
+        // 邊界限制
+        const maxX = window.innerWidth - s.width;
+        const maxY = window.innerHeight - s.height;
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(0, Math.min(newY, maxY));
+
+        sticker.style.left = `${newX}px`;
+        sticker.style.top = `${newY}px`;
+        
+        s.x = newX;
+        s.y = newY;
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        saveStickers(stickers);
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+    // 3. 縮放邏輯
+    const resizer = document.createElement('div');
+    resizer.className = 'sticker-resizer';
+    
+    resizer.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      const startWidth = s.width;
+      const startHeight = s.height;
+      const startX = e.clientX;
+      const startY = e.clientY;
+
+      const onMouseMove = (moveEvt) => {
+        const dx = moveEvt.clientX - startX;
+        const dy = moveEvt.clientY - startY;
+
+        let newWidth = startWidth + dx;
+        let newHeight = startHeight + dy;
+
+        // 最小尺寸限制
+        newWidth = Math.max(200, newWidth);
+        newHeight = Math.max(180, newHeight);
+
+        // 最大尺寸限制 (避免超出螢幕)
+        newWidth = Math.min(newWidth, window.innerWidth - s.x);
+        newHeight = Math.min(newHeight, window.innerHeight - s.y);
+
+        sticker.style.width = `${newWidth}px`;
+        sticker.style.height = `${newHeight}px`;
+
+        s.width = newWidth;
+        s.height = newHeight;
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        saveStickers(stickers);
+        renderMobileGrid(); // 同步更新手機版
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+    sticker.appendChild(resizer);
+  }
+
+  return sticker;
+}
+
+/**
+ * 簡易 Markdown 格式化 (支援 **粗體** 與 *斜體*)
+ * @param {String} text - 原始文字
+ * @returns {String} HTML 格式文字
+ */
+function formatMarkdown(text) {
+  if (!text) return '寫點東西吧...';
+  
+  // 逸出 HTML 字元防禦 XSS
+  let escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // 轉換粗體與斜體
+  escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  
+  return escaped;
+}

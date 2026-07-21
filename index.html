@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>健康計時與桌面便利貼</title>
+    <!-- 引入高質感 Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#10b981" />
+  </head>
+  <body>
+    <!-- 音訊播放器 -->
+    <audio id="alarm-audio" loop></audio>
+
+    <!-- 迎賓啟動層 (解決瀏覽器音訊自動播放限制) -->
+    <div id="welcome-overlay" class="overlay active">
+      <div class="welcome-card glass-panel">
+        <div class="welcome-icon">🔔</div>
+        <h1>開啟健康工作日</h1>
+        <p>歡迎使用健康計時器與桌面便利貼！為了讓應用程式能在時間到時順利播放提醒音樂，請點擊下方按鈕啟動。</p>
+        <button id="btn-start-app" class="btn primary">開始使用</button>
+      </div>
+    </div>
+
+    <!-- 主要應用程式容器 -->
+    <div id="app" class="hidden">
+      <!-- 虛擬桌面視圖 (大螢幕) -->
+      <div id="desktop-view" class="view-mode">
+        <!-- 虛擬桌面的星空/極光漸層背景由 CSS 提供 -->
+        
+        <!-- 控制中心面板 -->
+        <div id="control-panel" class="glass-panel draggable">
+          <div class="panel-header">
+            <span class="panel-title"><span class="neon-dot"></span> 控制中心</span>
+            <div class="drag-handle">::</div>
+          </div>
+          <div class="panel-body">
+            <!-- 計時器區 -->
+            <div class="timer-section">
+              <div class="timer-ring-container">
+                <svg class="timer-ring" width="120" height="120">
+                  <circle class="timer-ring-bg" stroke="rgba(255,255,255,0.05)" stroke-width="6" fill="transparent" r="52" cx="60" cy="60"/>
+                  <circle id="timer-ring-progress" stroke="#10b981" stroke-width="6" fill="transparent" r="52" cx="60" cy="60" stroke-dasharray="326.7" stroke-dashoffset="0"/>
+                </svg>
+                <div id="timer-display">30:00</div>
+              </div>
+              <div class="timer-controls">
+                <button id="btn-toggle-timer" class="btn-icon" title="開始/暫停">▶</button>
+                <button id="btn-reset-timer" class="btn-icon" title="重設">🔄</button>
+              </div>
+            </div>
+
+            <!-- 操作按鈕 -->
+            <div class="action-section">
+              <button id="btn-add-sticker" class="btn primary w-100">+ 新增便利貼</button>
+              <button id="btn-open-settings" class="btn secondary w-100">⚙ 系統設定</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 便利貼放置的桌面容器 -->
+        <div id="sticker-container"></div>
+      </div>
+
+      <!-- 行動端視圖 (小螢幕 - 瀑布流/清單) -->
+      <div id="mobile-view" class="view-mode">
+        <header class="mobile-header glass-panel">
+          <h1>健康便利貼</h1>
+          <div class="mobile-timer-bar">
+            <span id="mobile-timer-display">30:00</span>
+            <button id="btn-mobile-toggle-timer" class="btn-icon">▶</button>
+          </div>
+        </header>
+
+        <main class="mobile-main">
+          <!-- 搜尋與過濾 -->
+          <div class="filter-bar glass-panel">
+            <input type="text" id="mobile-search" placeholder="搜尋便利貼..." />
+            <div class="color-filters">
+              <span class="color-filter active" data-color="all"></span>
+              <span class="color-filter note-yellow" data-color="yellow"></span>
+              <span class="color-filter note-pink" data-color="pink"></span>
+              <span class="color-filter note-blue" data-color="blue"></span>
+              <span class="color-filter note-green" data-color="green"></span>
+              <span class="color-filter note-purple" data-color="purple"></span>
+            </div>
+          </div>
+
+          <!-- 行動版便利貼網格 -->
+          <div id="mobile-sticker-grid"></div>
+
+          <button id="btn-mobile-add" class="fab">+</button>
+        </main>
+      </div>
+    </div>
+
+    <!-- 非侵入式通知彈窗 (Toast) -->
+    <div id="notification-toast" class="glass-panel">
+      <div class="toast-header">
+        <span class="toast-icon">🧘</span>
+        <strong class="toast-title">該起來動一動囉！</strong>
+      </div>
+      <div class="toast-body">
+        您已經坐了 30 分鐘，請離開座位活動筋骨，看遠方 30 秒，並喝點水。
+      </div>
+      <div class="toast-actions">
+        <button id="btn-toast-rest" class="btn primary btn-sm">重新計時</button>
+        <button id="btn-toast-snooze" class="btn secondary btn-sm">延後 5 分鐘</button>
+      </div>
+    </div>
+
+    <!-- 系統設定彈窗 (Modal) -->
+    <div id="settings-modal" class="overlay">
+      <div class="settings-card glass-panel">
+        <div class="modal-header">
+          <h2>系統設定</h2>
+          <button id="btn-close-settings" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <!-- 計時器設定 -->
+          <div class="setting-group">
+            <label for="input-timer-duration">健康計時器長度 (分鐘)：</label>
+            <input type="number" id="input-timer-duration" min="1" max="180" value="30" />
+          </div>
+
+          <!-- 音訊設定 -->
+          <div class="setting-group">
+            <label for="select-audio-type">提醒音樂來源：</label>
+            <select id="select-audio-type">
+              <option value="online-piano">溫和鋼琴曲 (線上)</option>
+              <option value="online-rain">大自然雨聲 (線上)</option>
+              <option value="online-lofi">放鬆 Lofi 音樂 (線上)</option>
+              <option value="offline-bell">療癒磬聲 (離線 Web Audio)</option>
+              <option value="offline-chime">療癒風鈴 (離線 Web Audio)</option>
+              <option value="local-file">本地上傳音樂檔案 (永久儲存於瀏覽器)</option>
+            </select>
+          </div>
+
+          <div id="local-audio-group" class="setting-group hidden">
+            <label for="input-local-audio">選取本機音樂檔案 (最大 15MB)：</label>
+            <input type="file" id="input-local-audio" accept="audio/*" />
+            <div id="local-audio-status" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
+              暫無已儲存的音樂檔。上傳後音樂將永久存在於您瀏覽器中，離線也能播放。
+            </div>
+          </div>
+
+          <!-- 桌面通知設定與測試 -->
+          <div class="setting-group">
+            <label>桌面通知狀態：</label>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span id="notification-permission-status" style="font-size: 0.95rem; font-weight: 600;">偵測中...</span>
+              <button id="btn-request-permission" class="btn secondary btn-sm hidden" style="padding: 6px 12px; font-size: 0.8rem; margin: 0;">要求權限</button>
+              <button id="btn-test-notification" class="btn secondary btn-sm" style="padding: 6px 12px; font-size: 0.8rem; margin: 0;">測試桌面通知</button>
+            </div>
+            <p id="notification-warning-tips" class="hidden" style="color: var(--danger-color); font-size: 0.8rem; margin-top: 4px; line-height: 1.4;">
+              ⚠️ 您的瀏覽器已封鎖通知。請點擊網址列左側的「鎖頭 🔒」圖示，並將「通知」權限變更為「允許」。
+            </p>
+          </div>
+
+          <!-- 開機自啟動 -->
+          <div class="setting-group">
+            <label class="toggle-container">
+              <span>開機時自動啟動應用程式</span>
+              <input type="checkbox" id="checkbox-startup" />
+              <span class="toggle-slider"></span>
+            </label>
+            <div id="startup-guide" class="startup-guide hidden">
+              <p>💡 您的瀏覽器不支援一鍵開機啟動，或是需要手動設定。您可以：</p>
+              <ol>
+                <li>點選下方按鈕下載啟動捷徑檔。</li>
+                <li>按下 <code>Win + R</code>，輸入 <code>shell:startup</code> 開啟啟動資料夾。</li>
+                <li>將下載的捷徑檔移入該資料夾中，即可在開機時自動開啟本應用。</li>
+              </ol>
+              <button id="btn-download-shortcut" class="btn secondary btn-sm">下載啟動捷徑</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-save-settings" class="btn primary">儲存設定</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主要邏輯入口 -->
+    <script type="module" src="/src/main.js"></script>
+    <script>
+      // 註冊 Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker 註冊成功:', reg.scope))
+            .catch(err => console.log('Service Worker 註冊失敗:', err));
+        });
+      }
+    </script>
+  </body>
+</html>
+
