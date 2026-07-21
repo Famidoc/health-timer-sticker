@@ -12,8 +12,8 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#10b981" />
-    <script type="module" crossorigin src="./assets/index-BL-0LUCr.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-Deoshh4_.css">
+    <script type="module" crossorigin src="./assets/index-CS0mgWbF.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-D-VSAkpy.css">
   </head>
   <body>
     <!-- 音訊播放器 -->
@@ -133,21 +133,33 @@
           <!-- 音訊設定 -->
           <div class="setting-group">
             <label for="select-audio-type">提醒音樂來源：</label>
-            <select id="select-audio-type">
-              <option value="online-piano">溫和鋼琴曲 (線上)</option>
-              <option value="online-rain">大自然雨聲 (線上)</option>
-              <option value="online-lofi">放鬆 Lofi 音樂 (線上)</option>
-              <option value="offline-bell">療癒磬聲 (離線 Web Audio)</option>
-              <option value="offline-chime">療癒風鈴 (離線 Web Audio)</option>
-              <option value="local-file">本地上傳音樂檔案 (永久儲存於瀏覽器)</option>
-            </select>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <select id="select-audio-type" style="flex: 1; margin: 0;">
+                <option value="offline-bell">療癒磬聲 (離線 Web Audio)</option>
+                <option value="offline-chime">療癒風鈴 (離線 Web Audio)</option>
+                <option value="offline-rain">大自然雨聲 (離線 Web Audio)</option>
+                <option value="local-file">本地上傳音樂檔案 (永久儲存於瀏覽器)</option>
+              </select>
+              <button id="btn-test-audio" class="btn secondary" style="padding: 10px 16px; margin: 0; white-space: nowrap; height: 42px; font-size: 0.85rem;">🔊 試聽</button>
+            </div>
           </div>
 
+          <!-- 本地音樂上傳 -->
           <div id="local-audio-group" class="setting-group hidden">
             <label for="input-local-audio">選取本機音樂檔案 (最大 15MB)：</label>
             <input type="file" id="input-local-audio" accept="audio/*" />
             <div id="local-audio-status" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
               暫無已儲存的音樂檔。上傳後音樂將永久存在於您瀏覽器中，離線也能播放。
+            </div>
+          </div>
+
+          <!-- 提示音量設定 -->
+          <div class="setting-group">
+            <label for="input-volume">提示音量：<span id="volume-display">50%</span></label>
+            <div style="display: flex; align-items: center; gap: 12px; margin-top: 6px;">
+              <span style="font-size: 1.1rem; opacity: 0.7;">🔈</span>
+              <input type="range" id="input-volume" min="0" max="1" step="0.05" value="0.5" style="flex: 1; cursor: pointer;" />
+              <span style="font-size: 1.1rem; opacity: 0.7;">🔊</span>
             </div>
           </div>
 
