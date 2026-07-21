@@ -79,7 +79,8 @@ export function initStartup() {
  * 動態生成 Windows 的 .url 捷徑檔案並觸發下載
  */
 function downloadWindowsShortcut() {
-  const currentUrl = window.location.origin;
+  // 使用 origin + pathname 確保在 GitHub Pages 等子目錄部署時，捷徑包含完整的子路徑
+  const currentUrl = window.location.origin + window.location.pathname;
   
   // Windows .url 網頁捷徑檔案格式
   const shortcutContent = `[InternetShortcut]
