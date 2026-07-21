@@ -1,0 +1,25 @@
+{
+  "name": "健康計時器與桌面便利貼",
+  "short_name": "健康便利貼",
+  "description": "防範久坐威脅的健康提醒計時器與桌面備忘便利貼 PWA 應用。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d0e12",
+  "theme_color": "#10b981",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "run_on_os_login": {
+    "mode": "windowed"
+  }
+}
