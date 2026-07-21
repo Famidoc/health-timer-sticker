@@ -17,6 +17,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnStartApp = document.getElementById('btn-start-app');
   const appContainer = document.getElementById('app');
 
+  const startApplication = () => {
+    // 切換 UI 顯示
+    if (welcomeOverlay) welcomeOverlay.classList.remove('active');
+    if (appContainer) appContainer.classList.remove('hidden');
+    
+    // 自動啟動健康計時器
+    startTimer();
+  };
+
   if (btnStartApp) {
     btnStartApp.addEventListener('click', () => {
       // 解鎖音訊 (AudioContext 限制)
@@ -24,19 +33,32 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // 請求系統桌面通知權限，以便於網頁在背景/最小化時也能提醒使用者
       if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission().catch(err => {
+        Notification.requestPermission().then(() => {
+          startApplication();
+        }).catch(err => {
           console.warn('請求通知權限失敗:', err);
+          startApplication();
         });
+      } else {
+        startApplication();
       }
-      
-      // 切換 UI 顯示
-      if (welcomeOverlay) welcomeOverlay.classList.remove('active');
-      if (appContainer) appContainer.classList.remove('hidden');
-      
-      // 自動啟動健康計時器
-      startTimer();
     });
   }
+
+  // 關鍵優化：如果先前已經有桌面通知權限，則不需等待使用者手動點擊「開始使用」按鈕，
+  // 而是直接跳過迎賓畫面，在背景/工作列自動啟動計時器。
+  if ('Notification' in window && Notification.permission === 'granted') {
+    startApplication();
+  }
+
+  // 設定一次性的全域事件監聽，當使用者首次與頁面互動（點選或按鍵）時，解鎖音訊
+  const handleFirstInteraction = () => {
+    unlockAudio();
+    document.removeEventListener('click', handleFirstInteraction);
+    document.removeEventListener('keydown', handleFirstInteraction);
+  };
+  document.addEventListener('click', handleFirstInteraction);
+  document.addEventListener('keydown', handleFirstInteraction);
 
   // 3. 電腦版控制中心面板拖曳功能 (可在桌面任意移動)
   setupControlPanelDrag();

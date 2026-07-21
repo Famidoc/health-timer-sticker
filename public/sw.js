@@ -58,8 +58,8 @@ self.addEventListener('notificationclick', (event) => {
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if ('focus' in client) {
-          // 向前台發送訊息，使其啟動 30 秒呼吸引導
-          client.postMessage({ action: 'start-rest' });
+          // 向前台發送訊息，使其啟動提醒與解鎖音訊
+          client.postMessage({ action: 'notification-clicked' });
           return client.focus();
         }
       }

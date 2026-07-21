@@ -98,11 +98,11 @@ function setupTimerEvents() {
   // 監聽來自 Service Worker 的訊息 (點擊系統桌面通知時觸發)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', (event) => {
-      if (event.data && event.data.action === 'start-rest') {
-        hideNotification();
-        stopAlarm();
-        resetTimer();
-        startTimer();
+      if (event.data && event.data.action === 'notification-clicked') {
+        // 使用者點選桌面通知，此時視窗已聚焦
+        // 我們撥放提醒音樂以解鎖瀏覽器靜音限制，讓使用者可以開始休息
+        const settings = loadSettings();
+        playAlarm(settings);
       }
     });
   }
