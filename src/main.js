@@ -1,6 +1,6 @@
 import './style.css';
 import { initStickers } from './modules/sticker.js';
-import { initAudio, unlockAudio } from './modules/audio.js';
+import { initAudio, unlockAudio, playAlarm, stopAlarm, setVolume } from './modules/audio.js';
 import { initTimer, resetTimer, startTimer } from './modules/timer.js';
 import { initStartup } from './modules/startup.js';
 import { loadSettings, saveSettings, loadLocalAudioFile, saveLocalAudioFile } from './modules/storage.js';
@@ -127,6 +127,11 @@ function setupSettingsEvents() {
   const selectAudio = document.getElementById('select-audio-type');
   const checkboxStartup = document.getElementById('checkbox-startup');
 
+  // 新增的音量與試聽 UI 元素
+  const btnTestAudio = document.getElementById('btn-test-audio');
+  const inputVolume = document.getElementById('input-volume');
+  const volumeDisplay = document.getElementById('volume-display');
+
   // 取得本機音樂上傳相關 UI 元素
   const inputLocalAudio = document.getElementById('input-local-audio');
   const localAudioGroup = document.getElementById('local-audio-group');
@@ -139,6 +144,81 @@ function setupSettingsEvents() {
   const warningTips = document.getElementById('notification-warning-tips');
 
   if (!modal) return;
+
+  // 音訊試聽狀態
+  let isTestingAudio = false;
+
+  const stopTestingAudio = () => {
+    if (isTestingAudio) {
+      isTestingAudio = false;
+      if (btnTestAudio) {
+        btnTestAudio.innerText = '🔊 試聽';
+        btnTestAudio.classList.remove('primary');
+        btnTestAudio.classList.add('secondary');
+      }
+      stopAlarm();
+    }
+  };
+
+  // 監聽音量 slider 的即時變更
+  if (inputVolume) {
+    inputVolume.addEventListener('input', (e) => {
+      const vol = parseFloat(e.target.value);
+      if (volumeDisplay) {
+        volumeDisplay.innerText = `${Math.round(vol * 100)}%`;
+      }
+      setVolume(vol);
+    });
+  }
+
+  // 測試音效點擊事件
+  if (btnTestAudio) {
+    btnTestAudio.addEventListener('click', async () => {
+      if (isTestingAudio) {
+        stopTestingAudio();
+      } else {
+        isTestingAudio = true;
+        btnTestAudio.innerText = '⏳ 載入中';
+        btnTestAudio.classList.remove('secondary');
+        btnTestAudio.classList.add('primary');
+
+        const currentSettings = {
+          audioType: selectAudio ? selectAudio.value : 'offline-bell',
+          volume: inputVolume ? parseFloat(inputVolume.value) : 0.5
+        };
+
+        try {
+          // 解鎖音訊 (預防萬一)
+          unlockAudio();
+          // 播放測試音效 (傳入 true 作為 isTest)
+          await playAlarm(currentSettings, true);
+          
+          // 如果沒有出錯，且使用者還在試聽狀態中，將按鈕改為停止
+          if (isTestingAudio) {
+            btnTestAudio.innerText = '🛑 停止';
+          }
+        } catch (err) {
+          console.error('試聽播放失敗:', err);
+          isTestingAudio = false;
+          btnTestAudio.innerText = '❌ 載入失敗';
+          btnTestAudio.classList.remove('primary');
+          btnTestAudio.style.background = 'var(--danger-color)';
+          btnTestAudio.style.color = '#ffffff';
+
+          // 清除播放器狀態
+          stopAlarm();
+
+          // 2 秒後恢復按鈕狀態
+          setTimeout(() => {
+            btnTestAudio.innerText = '🔊 試聽';
+            btnTestAudio.classList.add('secondary');
+            btnTestAudio.style.background = '';
+            btnTestAudio.style.color = '';
+          }, 2000);
+        }
+      }
+    });
+  }
 
   // 更新桌面通知狀態 UI 的狀態
   const updateNotificationStatusUI = () => {
@@ -194,6 +274,15 @@ function setupSettingsEvents() {
       }
       if (checkboxStartup) checkboxStartup.checked = settings.startup;
 
+      // 載入音量與自訂網址
+      if (inputVolume) {
+        inputVolume.value = settings.volume !== undefined ? settings.volume : 0.5;
+        if (volumeDisplay) {
+          volumeDisplay.innerText = `${Math.round(inputVolume.value * 100)}%`;
+        }
+        setVolume(parseFloat(inputVolume.value));
+      }
+
       // 檢查 IndexedDB 是否有已儲存的本地音樂檔案
       if (localAudioStatus) {
         try {
@@ -220,6 +309,7 @@ function setupSettingsEvents() {
 
   // 關閉設定
   const closeModal = () => {
+    stopTestingAudio();
     modal.classList.remove('active');
   };
 
@@ -325,12 +415,16 @@ function setupSettingsEvents() {
       const duration = parseInt(inputDuration.value, 10) || 30;
       const audioType = selectAudio.value;
       const startup = checkboxStartup ? checkboxStartup.checked : false;
+      const volume = inputVolume ? parseFloat(inputVolume.value) : 0.5;
+
+      stopTestingAudio();
 
       // 儲存至 Storage
       saveSettings({
         duration,
         audioType,
-        startup
+        startup,
+        volume
       });
 
       // 重設健康計時器時間
@@ -341,6 +435,9 @@ function setupSettingsEvents() {
   }
 
   function toggleAudioGroup(type) {
+    // 當選單切換時，如果正在試聽，就先停止播放
+    stopTestingAudio();
+
     // 控制本地上傳音樂群組
     if (localAudioGroup) {
       if (type === 'local-file') {

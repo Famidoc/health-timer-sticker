@@ -5,8 +5,7 @@ let totalSeconds = 30 * 60; // 預設 30 分鐘
 let secondsLeft = totalSeconds;
 let timerInterval = null;
 let isRunning = false;
-
-
+let endTime = null;
 
 // SVG 圓環最大 dashoffset
 const RING_CIRCUMFERENCE = 326.7;
@@ -116,11 +115,17 @@ export function startTimer() {
   isRunning = true;
   updateControlButtonsState();
 
+  // 計算結束時間點
+  endTime = Date.now() + secondsLeft * 1000;
+
   timerInterval = setInterval(() => {
-    if (secondsLeft > 0) {
-      secondsLeft--;
+    const msLeft = endTime - Date.now();
+    if (msLeft > 0) {
+      secondsLeft = Math.ceil(msLeft / 1000);
       updateTimerDisplay();
     } else {
+      secondsLeft = 0;
+      updateTimerDisplay();
       clearInterval(timerInterval);
       timerInterval = null;
       isRunning = false;
@@ -137,6 +142,12 @@ export function pauseTimer() {
   isRunning = false;
   clearInterval(timerInterval);
   timerInterval = null;
+
+  // 更新剩餘時間
+  if (endTime) {
+    const msLeft = endTime - Date.now();
+    secondsLeft = Math.max(0, Math.ceil(msLeft / 1000));
+  }
   updateControlButtonsState();
 }
 
@@ -154,6 +165,7 @@ export function resetTimer(newDurationMinutes = null) {
   }
   
   secondsLeft = totalSeconds;
+  endTime = null;
   updateTimerDisplay();
 }
 
@@ -165,6 +177,7 @@ function snoozeTimer(minutes) {
   pauseTimer();
   totalSeconds = minutes * 60;
   secondsLeft = totalSeconds;
+  endTime = Date.now() + secondsLeft * 1000;
   updateTimerDisplay();
   startTimer();
 }

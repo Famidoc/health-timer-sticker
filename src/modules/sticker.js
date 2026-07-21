@@ -351,8 +351,29 @@ function createStickerDOM(s, isMobile) {
         }
       });
 
+      const btnDeleteTodo = document.createElement('button');
+      btnDeleteTodo.className = 'todo-item-delete-btn';
+      btnDeleteTodo.innerHTML = '&times;';
+      btnDeleteTodo.title = '刪除此項目';
+      btnDeleteTodo.addEventListener('mousedown', (e) => {
+        // 使用 mousedown 以防止與便利貼的 drag 邏輯交互衝突
+        e.stopPropagation();
+      });
+      btnDeleteTodo.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (s.todos.length > 1) {
+          s.todos.splice(idx, 1);
+        } else {
+          s.todos[0].text = '';
+          s.todos[0].done = false;
+        }
+        saveStickers(stickers);
+        renderAll();
+      });
+
       todoItem.appendChild(checkbox);
       todoItem.appendChild(todoText);
+      todoItem.appendChild(btnDeleteTodo);
       todoList.appendChild(todoItem);
     });
 
@@ -401,14 +422,16 @@ function createStickerDOM(s, isMobile) {
 
     // 2. 拖曳邏輯
     sticker.addEventListener('mousedown', (e) => {
-      // 如果點擊到按鈕、輸入框、或縮放點，就不觸發拖曳
+      // 如果點擊到按鈕、輸入框、縮放點、超連結、或待辦項目刪除按鈕，就不觸發拖曳
       if (
         e.target.closest('.sticker-actions') || 
         e.target.closest('.sticker-color-selector') ||
         e.target.closest('.sticker-resizer') ||
         e.target.tagName === 'TEXTAREA' ||
         e.target.getAttribute('contenteditable') === 'true' ||
-        e.target.classList.contains('todo-checkbox')
+        e.target.classList.contains('todo-checkbox') ||
+        e.target.closest('a') ||
+        e.target.closest('.todo-item-delete-btn')
       ) {
         return;
       }
@@ -502,21 +525,30 @@ function createStickerDOM(s, isMobile) {
   return sticker;
 }
 
-/**
- * 簡易 Markdown 格式化 (支援 **粗體** 與 *斜體*)
- * @param {String} text - 原始文字
- * @returns {String} HTML 格式文字
- */
 function formatMarkdown(text) {
   if (!text) return '寫點東西吧...';
   
-  // 逸出 HTML 字元防禦 XSS
+  // 1. 逸出 HTML 字元防禦 XSS
   let escaped = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
-  // 轉換粗體與斜體
+  // 2. 轉換網址為可點擊超連結 (需在轉義 HTML 之後，以防生成的 <a> 標籤被轉義)
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  escaped = escaped.replace(urlRegex, (url) => {
+    // 移除結尾的標點符號，避免點號句號被包在網址內
+    let cleanUrl = url;
+    let suffix = '';
+    const match = url.match(/([.,!?;)]+)$/);
+    if (match) {
+      cleanUrl = url.substring(0, url.length - match[0].length);
+      suffix = match[0];
+    }
+    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="sticker-link">${cleanUrl}</a>${suffix}`;
+  });
+
+  // 3. 轉換粗體與斜體
   escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
   

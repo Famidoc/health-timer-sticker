@@ -3,9 +3,10 @@ const SETTINGS_KEY = 'health_stickers_settings';
 
 const DEFAULT_SETTINGS = {
   duration: 30, // 分鐘
-  audioType: 'online-piano', // 預設溫和鋼琴曲
+  audioType: 'offline-bell', // 預設療癒磬聲
   customAudioUrl: '',
-  startup: false
+  startup: false,
+  volume: 0.5 // 預設 50%
 };
 
 /**

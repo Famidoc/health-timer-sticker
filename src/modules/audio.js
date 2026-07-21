@@ -3,13 +3,7 @@ import { loadLocalAudioFile } from './storage.js';
 let audioCtx = null;
 let alarmInterval = null;
 let alarmAudioElement = null;
-
-// 線上預設 MP3 音訊網址 (使用穩定、免版稅的 SoundHelix 樂曲作為範例)
-const AUDIO_URLS = {
-  'online-piano': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-  'online-rain': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
-  'online-lofi': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3'
-};
+let audioVolume = 0.5; // 全域預設音量
 
 /**
  * 初始化音訊系統，與 index.html 中的 audio 標籤進行綁定
@@ -43,16 +37,34 @@ export function unlockAudio() {
   }
 }
 
+/**
+ * 動態更新提示音量
+ * @param {Number} volume - 音量值 (0.0 到 1.0)
+ */
+export function setVolume(volume) {
+  audioVolume = volume;
+  if (alarmAudioElement) {
+    alarmAudioElement.volume = volume;
+  }
+}
+
 let localAudioUrl = null;
 
 /**
  * 開始播放提醒音樂或合成音效
  * @param {Object} settings - 包含音訊類型與自訂網址的設定物件
+ * @param {Boolean} isTest - 是否為測試/試聽播放 (若是，則加載失敗時直接拋出錯誤而不降級播放磬聲)
  */
-export async function playAlarm(settings) {
-  stopAlarm(); // 確保先停止上一次的播放
+export async function playAlarm(settings, isTest = false) {
+  stopAlarm(); // 確保先停止上一次 the 播放
 
-  const { audioType, customAudioUrl } = settings;
+  const { audioType } = settings;
+  const volume = settings.volume !== undefined ? settings.volume : audioVolume;
+
+  // 更新播放器的音量
+  if (alarmAudioElement) {
+    alarmAudioElement.volume = volume;
+  }
 
   if (audioType === 'local-file') {
     // 1. 播放本地上傳音樂
@@ -67,26 +79,12 @@ export async function playAlarm(settings) {
 
       if (alarmAudioElement) {
         alarmAudioElement.src = localAudioUrl;
-        alarmAudioElement.play().catch(err => {
-          console.error('播放本地音樂失敗，將自動降級使用離線磬聲。錯誤:', err);
-          playOfflineBell();
-        });
+        await alarmAudioElement.play();
       }
     } catch (err) {
-      console.error('讀取本地音樂失敗，將自動降級使用離線磬聲。錯誤:', err);
-      playOfflineBell();
-    }
-  } else if (audioType.startsWith('online-')) {
-    // 2. 播放線上音樂
-    let src = AUDIO_URLS[audioType];
-
-    if (alarmAudioElement) {
-      alarmAudioElement.src = src;
-      alarmAudioElement.play().catch(err => {
-        console.error('播放線上音樂失敗，將自動降級使用離線磬聲。錯誤:', err);
-        // 如果線上播放失敗，降級為離線磬聲
-        playOfflineBell();
-      });
+      console.error('讀取或播放本地音樂失敗，錯誤:', err);
+      if (isTest) throw err;
+      playOfflineBell(volume);
     }
   } else {
     // 2. 播放離線 Web Audio 合成音效
@@ -98,9 +96,11 @@ export async function playAlarm(settings) {
     }
 
     if (audioType === 'offline-bell') {
-      playOfflineBell();
+      playOfflineBell(volume);
     } else if (audioType === 'offline-chime') {
-      playOfflineChime();
+      playOfflineChime(volume);
+    } else if (audioType === 'offline-rain') {
+      playOfflineRain(volume);
     }
   }
 }
@@ -115,19 +115,99 @@ export function stopAlarm() {
     alarmAudioElement.currentTime = 0;
   }
 
-  // 清除 Web Audio 合成計時器 (同時清除 interval 與 timeout)
+  // 清除 Web Audio 合成計時器或自訂節點
   if (alarmInterval) {
-    clearInterval(alarmInterval);
-    clearTimeout(alarmInterval);
+    if (typeof alarmInterval.stop === 'function') {
+      alarmInterval.stop();
+    } else {
+      clearInterval(alarmInterval);
+      clearTimeout(alarmInterval);
+    }
     alarmInterval = null;
   }
 }
 
 /**
+ * Web Audio 合成：大自然雨聲 (Rain Noise)
+ * 使用白噪音搭配雙濾波器與 LFO 音量波動，模擬真實的戶外降雨聲
+ * @param {Number} volume - 音量乘數 (0.0 到 1.0)
+ */
+function playOfflineRain(volume = 0.5) {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+
+  const now = audioCtx.currentTime;
+  const bufferSize = 2 * audioCtx.sampleRate;
+  const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const output = noiseBuffer.getChannelData(0);
+
+  // 1. 生成白噪音
+  for (let i = 0; i < bufferSize; i++) {
+    output[i] = Math.random() * 2 - 1;
+  }
+
+  const noiseSource = audioCtx.createBufferSource();
+  noiseSource.buffer = noiseBuffer;
+  noiseSource.loop = true;
+
+  // 2. 建立濾波器
+  // 低通濾波器：切除刺耳的高頻沙沙聲，使其圓潤
+  const lowpass = audioCtx.createBiquadFilter();
+  lowpass.type = 'lowpass';
+  lowpass.frequency.setValueAtTime(800, now);
+
+  // 帶通/峰值濾波器：模擬雨水落地的低頻撞擊共鳴
+  const peak = audioCtx.createBiquadFilter();
+  peak.type = 'peaking';
+  peak.frequency.setValueAtTime(150, now);
+  peak.Q.setValueAtTime(1.0, now);
+  peak.gain.setValueAtTime(6, now);
+
+  // 3. 建立音量控制與 LFO 動態調變 (模擬雨勢受風吹的自然起伏)
+  const mainGain = audioCtx.createGain();
+  mainGain.gain.setValueAtTime(0.25 * volume, now);
+
+  const lfo = audioCtx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.setValueAtTime(0.12, now); // 每 8.3 秒起伏一次
+
+  const lfoGain = audioCtx.createGain();
+  lfoGain.gain.setValueAtTime(0.08 * volume, now);
+
+  lfo.connect(lfoGain);
+  lfoGain.connect(mainGain.gain);
+
+  // 連結節點
+  noiseSource.connect(lowpass);
+  lowpass.connect(peak);
+  peak.connect(mainGain);
+  mainGain.connect(audioCtx.destination);
+
+  // 啟動
+  lfo.start(now);
+  noiseSource.start(now);
+
+  // 包裝停止介面給 stopAlarm
+  alarmInterval = {
+    stop: () => {
+      try {
+        noiseSource.stop();
+        lfo.stop();
+      } catch (e) {}
+    }
+  };
+}
+
+/**
  * Web Audio 合成：療癒磬聲 (Tibetan Bowl / Bell)
  * 定期敲擊一次，發出長衰減的低頻和聲
+ * @param {Number} volume - 音量乘數 (0.0 到 1.0)
  */
-function playOfflineBell() {
+function playOfflineBell(volume = 0.5) {
   const triggerBell = () => {
     if (!audioCtx) return;
     
@@ -140,8 +220,8 @@ function playOfflineBell() {
     // 建立總輸出增益節點
     const masterGain = audioCtx.createGain();
     masterGain.gain.setValueAtTime(0, now);
-    // 快速漸入 (Attack)
-    masterGain.gain.linearRampToValueAtTime(0.4, now + 0.05);
+    // 快速漸入 (Attack) - 套用音量調整
+    masterGain.gain.linearRampToValueAtTime(0.4 * volume, now + 0.05);
     // 極緩慢漸弱 (Decay / Release) - 約 7 秒
     masterGain.gain.exponentialRampToValueAtTime(0.001, now + 8);
     masterGain.connect(audioCtx.destination);
@@ -156,8 +236,8 @@ function playOfflineBell() {
       osc.frequency.setValueAtTime(baseFreq * harmonic, now);
       
       // 諧波振幅衰減，頻率越高振幅越低
-      const volume = 0.5 / (index + 1);
-      gainNode.gain.setValueAtTime(volume, now);
+      const baseVol = 0.5 / (index + 1);
+      gainNode.gain.setValueAtTime(baseVol, now);
       gainNode.gain.exponentialRampToValueAtTime(0.001, now + 7);
       
       osc.connect(gainNode);
@@ -176,8 +256,9 @@ function playOfflineBell() {
 /**
  * Web Audio 合成：療癒風鈴 (Wind Chimes)
  * 模擬微風吹拂風鈴，隨機敲擊不同金屬管的清脆高音
+ * @param {Number} volume - 音量乘數 (0.0 到 1.0)
  */
-function playOfflineChime() {
+function playOfflineChime(volume = 0.5) {
   const frequencies = [587.33, 659.25, 783.99, 880.00, 987.77, 1174.66]; // D5, E5, G5, A5, B5, D6 悅耳五聲音階
 
   const triggerChime = () => {
@@ -201,8 +282,8 @@ function playOfflineChime() {
 
       // 風鈴的敲擊動態
       gainNode.gain.setValueAtTime(0, now);
-      // 超快速 Attack
-      gainNode.gain.linearRampToValueAtTime(0.15, now + 0.01);
+      // 超快速 Attack - 套用音量調整
+      gainNode.gain.linearRampToValueAtTime(0.15 * volume, now + 0.01);
       // 清脆衰減 (約 2.5 秒)
       gainNode.gain.exponentialRampToValueAtTime(0.001, now + 3);
       

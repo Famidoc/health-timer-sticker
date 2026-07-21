@@ -453,6 +453,19 @@ body::before {
   word-wrap: break-word;
 }
 
+.sticker-link {
+  color: #0056b3;
+  text-decoration: underline;
+  cursor: pointer;
+  pointer-events: auto;
+  word-break: break-all;
+  font-weight: 500;
+}
+
+.sticker-link:hover {
+  color: #003366;
+}
+
 /* Checklist 待辦清單樣式 */
 .todo-list {
   list-style: none;
@@ -466,6 +479,34 @@ body::before {
   align-items: flex-start;
   gap: 8px;
   font-size: 0.95rem;
+  position: relative;
+}
+
+.todo-item-delete-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0; /* 預設隱藏，懸浮時顯現 */
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  padding: 0 4px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+}
+
+/* 當滑鼠懸停在項目行時顯現刪除按鈕 */
+.todo-item:hover .todo-item-delete-btn {
+  opacity: 0.5;
+}
+
+.todo-item-delete-btn:hover {
+  opacity: 1 !important;
+  transform: scale(1.15);
 }
 
 .todo-checkbox {
@@ -819,6 +860,48 @@ body::before {
 .setting-group input:focus,
 .setting-group select:focus {
   border-color: rgba(255,255,255,0.2);
+}
+
+/* 提示音量滑桿樣式 */
+.setting-group input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  outline: none;
+  transition: background 0.3s ease;
+}
+
+.setting-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--primary-glow);
+  transition: transform 0.1s ease;
+}
+
+.setting-group input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.setting-group input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary-color);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--primary-glow);
+  transition: transform 0.1s ease;
+}
+
+.setting-group input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.2);
 }
 
 /* Switch Toggle 開關樣式 */
