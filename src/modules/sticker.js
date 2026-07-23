@@ -300,6 +300,153 @@ function createStickerDOM(s, isMobile) {
       const todoItem = document.createElement('li');
       todoItem.className = `todo-item ${todo.done ? 'done' : ''}`;
 
+      // 拖動手柄
+      const dragHandle = document.createElement('span');
+      dragHandle.className = 'todo-drag-handle';
+      dragHandle.innerHTML = '⋮⋮';
+      dragHandle.title = '按住拖動排序';
+
+      // HTML5 Drag & Drop 事件
+      dragHandle.addEventListener('mousedown', () => {
+        todoItem.draggable = true;
+      });
+
+      dragHandle.addEventListener('mouseup', () => {
+        todoItem.draggable = false;
+      });
+
+      todoItem.addEventListener('dragstart', (e) => {
+        e.stopPropagation();
+        e.dataTransfer.setData('text/plain', JSON.stringify({ stickerId: s.id, fromIdx: idx }));
+        e.dataTransfer.effectAllowed = 'move';
+        todoItem.classList.add('dragging');
+      });
+
+      todoItem.addEventListener('dragend', (e) => {
+        e.stopPropagation();
+        todoItem.draggable = false;
+        todoItem.classList.remove('dragging');
+        todoList.querySelectorAll('.todo-item').forEach(item => {
+          item.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+      });
+
+      todoItem.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+
+        const rect = todoItem.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        if (e.clientY < midY) {
+          todoItem.classList.add('drag-over-top');
+          todoItem.classList.remove('drag-over-bottom');
+        } else {
+          todoItem.classList.add('drag-over-bottom');
+          todoItem.classList.remove('drag-over-top');
+        }
+      });
+
+      todoItem.addEventListener('dragleave', (e) => {
+        e.stopPropagation();
+        todoItem.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+
+      todoItem.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        todoItem.classList.remove('drag-over-top', 'drag-over-bottom');
+
+        let data;
+        try {
+          data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        } catch (err) {
+          return;
+        }
+
+        if (data && data.stickerId === s.id && typeof data.fromIdx === 'number') {
+          const fromIdx = data.fromIdx;
+          const rect = todoItem.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          let targetIdx = e.clientY < midY ? idx : idx + 1;
+
+          if (fromIdx !== targetIdx && fromIdx !== targetIdx - 1) {
+            const [movedTodo] = s.todos.splice(fromIdx, 1);
+            if (fromIdx < targetIdx) targetIdx--;
+            s.todos.splice(targetIdx, 0, movedTodo);
+            saveStickers(stickers);
+            renderAll();
+          }
+        }
+      });
+
+      // 觸控裝置 (Touch devices) 拖動排序支援
+      dragHandle.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        const startIdx = idx;
+        todoItem.classList.add('dragging');
+        
+        let currentTargetItem = null;
+        let dropPosition = 'top';
+
+        const onTouchMove = (moveEvt) => {
+          if (moveEvt.cancelable) moveEvt.preventDefault();
+          const moveTouch = moveEvt.touches[0];
+          const elem = document.elementFromPoint(moveTouch.clientX, moveTouch.clientY);
+          if (!elem) return;
+
+          const targetItem = elem.closest('.todo-item');
+          
+          todoList.querySelectorAll('.todo-item').forEach(item => {
+            if (item !== todoItem) {
+              item.classList.remove('drag-over-top', 'drag-over-bottom');
+            }
+          });
+
+          if (targetItem && targetItem !== todoItem && todoList.contains(targetItem)) {
+            const rect = targetItem.getBoundingClientRect();
+            const midY = rect.top + rect.height / 2;
+            currentTargetItem = targetItem;
+            if (moveTouch.clientY < midY) {
+              dropPosition = 'top';
+              targetItem.classList.add('drag-over-top');
+            } else {
+              dropPosition = 'bottom';
+              targetItem.classList.add('drag-over-bottom');
+            }
+          } else {
+            currentTargetItem = null;
+          }
+        };
+
+        const onTouchEnd = () => {
+          document.removeEventListener('touchmove', onTouchMove);
+          document.removeEventListener('touchend', onTouchEnd);
+          todoItem.classList.remove('dragging');
+
+          todoList.querySelectorAll('.todo-item').forEach(item => {
+            item.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+
+          if (currentTargetItem) {
+            const targetIdx = Array.from(todoList.children).indexOf(currentTargetItem);
+            if (targetIdx !== -1 && targetIdx < s.todos.length) {
+              let finalIdx = dropPosition === 'top' ? targetIdx : targetIdx + 1;
+              if (startIdx !== finalIdx && startIdx !== finalIdx - 1) {
+                const [movedTodo] = s.todos.splice(startIdx, 1);
+                if (startIdx < finalIdx) finalIdx--;
+                s.todos.splice(finalIdx, 0, movedTodo);
+                saveStickers(stickers);
+                renderAll();
+              }
+            }
+          }
+        };
+
+        document.addEventListener('touchmove', onTouchMove, { passive: false });
+        document.addEventListener('touchend', onTouchEnd);
+      });
+
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.className = 'todo-checkbox';
@@ -371,6 +518,7 @@ function createStickerDOM(s, isMobile) {
         renderAll();
       });
 
+      todoItem.appendChild(dragHandle);
       todoItem.appendChild(checkbox);
       todoItem.appendChild(todoText);
       todoItem.appendChild(btnDeleteTodo);
@@ -422,7 +570,7 @@ function createStickerDOM(s, isMobile) {
 
     // 2. 拖曳邏輯
     sticker.addEventListener('mousedown', (e) => {
-      // 如果點擊到按鈕、輸入框、縮放點、超連結、或待辦項目刪除按鈕，就不觸發拖曳
+      // 如果點擊到按鈕、輸入框、縮放點、超連結、待辦項目拖動手柄或刪除按鈕，就不觸發整張便利貼拖曳
       if (
         e.target.closest('.sticker-actions') || 
         e.target.closest('.sticker-color-selector') ||
@@ -431,7 +579,8 @@ function createStickerDOM(s, isMobile) {
         e.target.getAttribute('contenteditable') === 'true' ||
         e.target.classList.contains('todo-checkbox') ||
         e.target.closest('a') ||
-        e.target.closest('.todo-item-delete-btn')
+        e.target.closest('.todo-item-delete-btn') ||
+        e.target.closest('.todo-drag-handle')
       ) {
         return;
       }

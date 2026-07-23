@@ -509,6 +509,48 @@ body::before {
   transform: scale(1.15);
 }
 
+.todo-drag-handle {
+  cursor: grab;
+  opacity: 0.3;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 2px 2px;
+  margin-right: 2px;
+  margin-top: 3px;
+  user-select: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.todo-item:hover .todo-drag-handle {
+  opacity: 0.7;
+}
+
+.todo-drag-handle:hover {
+  opacity: 1 !important;
+}
+
+.todo-drag-handle:active {
+  cursor: grabbing;
+}
+
+.todo-item.dragging {
+  opacity: 0.4;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+}
+
+.todo-item.drag-over-top {
+  border-top: 2px solid var(--accent-color, #3b82f6);
+}
+
+.todo-item.drag-over-bottom {
+  border-bottom: 2px solid var(--accent-color, #3b82f6);
+}
+
 .todo-checkbox {
   margin-top: 4px;
   cursor: pointer;
