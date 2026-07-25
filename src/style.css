@@ -329,6 +329,18 @@ body::before {
   gap: 12px;
 }
 
+.panel-footer {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+  text-align: center;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  opacity: 0.85;
+  letter-spacing: 0.3px;
+}
+
 /* ==========================================================================
    電腦版：便利貼元件 (Sticky Note Component)
    ========================================================================== */
@@ -1060,6 +1072,38 @@ body::before {
 }
 
 /* ==========================================================================
+   頁尾資訊 (Footer)
+   ========================================================================== */
+
+.app-footer {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  opacity: 0.85;
+  letter-spacing: 0.5px;
+  padding: 6px 18px;
+  border-radius: 20px;
+  background: rgba(18, 20, 26, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  pointer-events: auto;
+  z-index: 9999;
+  transition: opacity 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  white-space: nowrap;
+}
+
+.app-footer:hover {
+  opacity: 0.95;
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ==========================================================================
    RWD 響應式中斷點
    ========================================================================== */
 
@@ -1084,4 +1128,11 @@ body::before {
   #notification-toast.active {
     transform: translateY(0);
   }
+
+  .app-footer {
+    bottom: 8px;
+    font-size: 0.75rem;
+    padding: 4px 12px;
+  }
 }
+

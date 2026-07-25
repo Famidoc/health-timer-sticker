@@ -1,4 +1,4 @@
-const CACHE_NAME = 'health-sticker-v1';
+const CACHE_NAME = 'health-sticker-v2';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
@@ -26,26 +26,21 @@ self.addEventListener('fetch', (e) => {
   // 排除 chrome-extension 等非 http 協議
   if (!url.protocol.startsWith('http')) return;
 
+  // 網路優先 (Network-First)，讓程式碼更新能立即反映
   e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      const fetchPromise = fetch(e.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(e.request, responseToCache);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          // 網路請求失敗時，如果快取也沒有，就返回 null
-          return null;
-        });
-
-      // 優先返回快取，若無快取則返回網路請求的 Promise
-      return cachedResponse || fetchPromise;
-    })
+    fetch(e.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(e.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(e.request);
+      })
   );
 });
 

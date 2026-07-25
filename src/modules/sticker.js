@@ -13,6 +13,41 @@ let currentSearchQuery = '';
 export function initStickers() {
   stickers = loadStickers();
   
+  // 若儲存空間為空，自動恢復預設便利貼
+  if (!stickers || stickers.length === 0) {
+    stickers = [
+      {
+        id: 'sticker_default_1',
+        type: 'text',
+        content: '7/26(日)\nPO【健康計時器+桌面便利貼】\n\nhttps://docs.google.com/document/d/1SKmMLTl2ybqN2RhgQMeBIgP9W7xSp_W27YWvYInTi...',
+        todos: [],
+        x: 40,
+        y: 420,
+        width: 250,
+        height: 220,
+        color: 'blue',
+        zIndex: 10
+      },
+      {
+        id: 'sticker_default_2',
+        type: 'todo',
+        content: '',
+        todos: [
+          { id: 'todo_1', text: '待辦項目 1', done: true },
+          { id: 'todo_2', text: '再加', done: false },
+          { id: 'todo_3', text: '可拖動排序！', done: false }
+        ],
+        x: 310,
+        y: 420,
+        width: 250,
+        height: 220,
+        color: 'pink',
+        zIndex: 11
+      }
+    ];
+    saveStickers(stickers);
+  }
+
   // 計算當前的最大 zIndex，避免重疊順序錯亂
   if (stickers.length > 0) {
     maxZIndex = Math.max(...stickers.map(s => s.zIndex || 10)) + 1;
