@@ -4,6 +4,7 @@
   "description": "防範久坐威脅的健康提醒計時器與桌面備忘便利貼 PWA 應用。",
   "start_url": "./index.html",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#0d0e12",
   "theme_color": "#10b981",
   "orientation": "any",
