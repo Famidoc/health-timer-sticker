@@ -32,7 +32,9 @@
   user-select: none;
 }
 
-body {
+html, body {
+  width: 100%;
+  max-width: 100%;
   font-family: var(--font-main);
   background-color: var(--bg-dark);
   color: var(--text-primary);
@@ -163,7 +165,7 @@ body::before {
   bottom: 0;
   background: rgba(4, 5, 8, 0.85);
   backdrop-filter: blur(10px);
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   z-index: 1000;
@@ -173,6 +175,7 @@ body::before {
 }
 
 .overlay.active {
+  display: flex;
   opacity: 1;
   pointer-events: auto;
 }
@@ -244,6 +247,7 @@ body::before {
   top: 40px;
   left: 40px;
   width: 280px;
+  max-width: calc(100% - 20px);
   padding: 24px;
   z-index: 100;
   cursor: default;
@@ -358,6 +362,7 @@ body::before {
 .sticker {
   position: absolute;
   width: 280px;
+  max-width: calc(100% - 20px);
   min-height: 220px;
   padding: 16px;
   border-radius: 16px;

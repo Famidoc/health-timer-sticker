@@ -21,7 +21,7 @@ export function initStickers() {
         type: 'text',
         content: '7/26(日)\nPO【健康計時器+桌面便利貼】\n\nhttps://docs.google.com/document/d/1SKmMLTl2ybqN2RhgQMeBIgP9W7xSp_W27YWvYInTi...',
         todos: [],
-        x: 40,
+        x: 10,
         y: 420,
         width: 280,
         height: 220,
@@ -37,8 +37,8 @@ export function initStickers() {
           { id: 'todo_2', text: '再加', done: false },
           { id: 'todo_3', text: '可拖動排序！', done: false }
         ],
-        x: 340,
-        y: 420,
+        x: 10,
+        y: 650,
         width: 280,
         height: 220,
         color: 'pink',
@@ -48,6 +48,18 @@ export function initStickers() {
     saveStickers(stickers);
   } else {
     stickers = loaded;
+    // 檢查若已有便利貼位置超出目前視窗寬度，自動向左靠攏
+    let adjusted = false;
+    stickers.forEach(s => {
+      const maxX = Math.max(10, window.innerWidth - (s.width || 280) - 10);
+      if (s.x > maxX && maxX > 0) {
+        s.x = Math.max(10, maxX);
+        adjusted = true;
+      }
+    });
+    if (adjusted) {
+      saveStickers(stickers);
+    }
   }
 
   // 計算當前的最大 zIndex，避免重疊順序錯亂
