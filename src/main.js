@@ -75,39 +75,48 @@ function setupCompactWindow() {
   const btnCompactWindow = document.getElementById('btn-compact-window');
   if (!btnCompactWindow) return;
 
-  // 判斷當前是否已經處於極窄小視窗模式
-  const isPopup = window.opener !== null || (window.outerWidth && window.outerWidth < 450);
+  let isCompact = localStorage.getItem('health_compact_mode') === 'true';
 
-  if (isPopup) {
-    btnCompactWindow.innerText = '🗔 切換為完整視窗';
-    btnCompactWindow.title = '切換回標準視窗模式';
-    btnCompactWindow.addEventListener('click', () => {
-      window.open(window.location.href, '_blank');
-      setTimeout(() => {
-        try { window.close(); } catch (e) {}
-      }, 100);
-    });
-  } else {
-    btnCompactWindow.innerText = '🗔 切換為桌面小視窗';
-    btnCompactWindow.title = '切換至 300px 極窄獨立小視窗並關閉本視窗';
-    btnCompactWindow.addEventListener('click', () => {
-      const width = 300;
-      const height = 680;
-      const left = Math.max(0, window.screen.width - width - 40);
-      const top = 40;
+  const applyMode = (compact, shouldResize = true) => {
+    isCompact = compact;
+    localStorage.setItem('health_compact_mode', isCompact ? 'true' : 'false');
 
-      window.open(
-        window.location.href,
-        'HealthTimerStickerWidget',
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,toolbar=no,menubar=no,location=no`
-      );
+    const currX = window.screenX !== undefined ? window.screenX : (window.screenLeft !== undefined ? window.screenLeft : 10);
+    const currY = window.screenY !== undefined ? window.screenY : (window.screenTop !== undefined ? window.screenTop : 10);
 
-      // 自動關閉舊視窗，保持桌面只有唯一的 300px 精緻小視窗
-      setTimeout(() => {
-        try { window.close(); } catch (e) {}
-      }, 100);
-    });
+    if (isCompact) {
+      document.body.classList.add('compact-view-mode');
+      btnCompactWindow.innerText = '🗔 切換為完整視窗';
+      btnCompactWindow.title = '原地放大為完整視窗';
+
+      if (shouldResize) {
+        try {
+          window.resizeTo(320, 700);
+          window.moveTo(Math.max(0, currX), Math.max(0, currY));
+        } catch (e) {}
+      }
+    } else {
+      document.body.classList.remove('compact-view-mode');
+      btnCompactWindow.innerText = '🗔 切換為桌面小視窗';
+      btnCompactWindow.title = '原地縮小為桌面小視窗';
+
+      if (shouldResize) {
+        try {
+          window.resizeTo(850, 750);
+          window.moveTo(Math.max(0, currX), Math.max(0, currY));
+        } catch (e) {}
+      }
+    }
+  };
+
+  // 初始載入時若紀錄為精簡模式，先套用 CSS 滿寬樣式
+  if (isCompact) {
+    applyMode(true, false);
   }
+
+  btnCompactWindow.addEventListener('click', () => {
+    applyMode(!isCompact, true);
+  });
 }
 
 /**

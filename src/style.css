@@ -255,6 +255,20 @@ body::before {
   cursor: default;
 }
 
+/* 桌面小視窗模式：自動滿寬填滿，無右側多餘黑邊 */
+body.compact-view-mode #control-panel {
+  left: 10px !important;
+  top: 10px !important;
+  width: calc(100% - 20px) !important;
+  max-width: none !important;
+}
+
+body.compact-view-mode .sticker {
+  left: 10px !important;
+  width: calc(100% - 20px) !important;
+  max-width: none !important;
+}
+
 .panel-header {
   display: flex;
   justify-content: space-between;
