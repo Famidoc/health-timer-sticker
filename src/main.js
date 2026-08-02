@@ -75,19 +75,39 @@ function setupCompactWindow() {
   const btnCompactWindow = document.getElementById('btn-compact-window');
   if (!btnCompactWindow) return;
 
-  btnCompactWindow.addEventListener('click', () => {
-    const width = 300;
-    const height = 680;
-    const left = Math.max(0, window.screen.width - width - 40);
-    const top = 40;
+  // 判斷當前是否已經處於極窄小視窗模式
+  const isPopup = window.opener !== null || (window.outerWidth && window.outerWidth < 450);
 
-    // 開啟 300px 極窄彈出視窗
-    window.open(
-      window.location.href,
-      'HealthTimerStickerWidget',
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,toolbar=no,menubar=no,location=no`
-    );
-  });
+  if (isPopup) {
+    btnCompactWindow.innerText = '🗔 切換為完整視窗';
+    btnCompactWindow.title = '切換回標準視窗模式';
+    btnCompactWindow.addEventListener('click', () => {
+      window.open(window.location.href, '_blank');
+      setTimeout(() => {
+        try { window.close(); } catch (e) {}
+      }, 100);
+    });
+  } else {
+    btnCompactWindow.innerText = '🗔 切換為桌面小視窗';
+    btnCompactWindow.title = '切換至 300px 極窄獨立小視窗並關閉本視窗';
+    btnCompactWindow.addEventListener('click', () => {
+      const width = 300;
+      const height = 680;
+      const left = Math.max(0, window.screen.width - width - 40);
+      const top = 40;
+
+      window.open(
+        window.location.href,
+        'HealthTimerStickerWidget',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,toolbar=no,menubar=no,location=no`
+      );
+
+      // 自動關閉舊視窗，保持桌面只有唯一的 300px 精緻小視窗
+      setTimeout(() => {
+        try { window.close(); } catch (e) {}
+      }, 100);
+    });
+  }
 }
 
 /**
