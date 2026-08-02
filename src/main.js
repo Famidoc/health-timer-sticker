@@ -75,48 +75,50 @@ function setupCompactWindow() {
   const btnCompactWindow = document.getElementById('btn-compact-window');
   if (!btnCompactWindow) return;
 
-  let isCompact = localStorage.getItem('health_compact_mode') === 'true';
+  // 判斷當前是否在 300px 精緻獨立小視窗中
+  const isCompactWindow = window.innerWidth <= 340 || window.location.hash === '#compact';
 
-  const applyMode = (compact, shouldResize = true) => {
-    isCompact = compact;
-    localStorage.setItem('health_compact_mode', isCompact ? 'true' : 'false');
-
-    const currX = window.screenX !== undefined ? window.screenX : (window.screenLeft !== undefined ? window.screenLeft : 10);
-    const currY = window.screenY !== undefined ? window.screenY : (window.screenTop !== undefined ? window.screenTop : 10);
-
-    if (isCompact) {
-      document.body.classList.add('compact-view-mode');
-      btnCompactWindow.innerText = '🗔 切換為完整視窗';
-      btnCompactWindow.title = '原地放大為完整視窗';
-
-      if (shouldResize) {
-        try {
-          window.resizeTo(320, 700);
-          window.moveTo(Math.max(0, currX), Math.max(0, currY));
-        } catch (e) {}
+  if (isCompactWindow) {
+    btnCompactWindow.innerText = '🗔 切換為大視窗';
+    btnCompactWindow.title = '將視窗放大為標準寬度';
+    btnCompactWindow.addEventListener('click', () => {
+      try {
+        const currX = window.screenX !== undefined ? window.screenX : 10;
+        const currY = window.screenY !== undefined ? window.screenY : 10;
+        window.resizeTo(850, 750);
+        window.moveTo(Math.max(0, currX), Math.max(0, currY));
+      } catch (e) {
+        window.open(window.location.href.split('#')[0], '_blank');
+        try { window.close(); } catch (err) {}
       }
-    } else {
-      document.body.classList.remove('compact-view-mode');
-      btnCompactWindow.innerText = '🗔 切換為桌面小視窗';
-      btnCompactWindow.title = '原地縮小為桌面小視窗';
+    });
+  } else {
+    btnCompactWindow.innerText = '🗔 切換為桌面小視窗';
+    btnCompactWindow.title = '開啟 300px 極窄獨立小視窗並關閉大視窗';
+    btnCompactWindow.addEventListener('click', () => {
+      const width = 300;
+      const height = 680;
+      const left = Math.max(0, window.screenX !== undefined ? window.screenX : 10);
+      const top = Math.max(0, window.screenY !== undefined ? window.screenY : 10);
 
-      if (shouldResize) {
+      const targetUrl = window.location.href.split('#')[0] + '#compact';
+
+      // 以 Chrome 允許 300px 極窄寬度的 Popup 模式開啟
+      window.open(
+        targetUrl,
+        'HealthTimerStickerWidget300',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,toolbar=no,menubar=no,location=no`
+      );
+
+      // 自動關閉原先被 Chrome 限制最小寬度 500px 的 PWA 大視窗
+      setTimeout(() => {
         try {
-          window.resizeTo(850, 750);
-          window.moveTo(Math.max(0, currX), Math.max(0, currY));
+          window.close();
+          window.open('', '_self').close();
         } catch (e) {}
-      }
-    }
-  };
-
-  // 初始載入時若紀錄為精簡模式，先套用 CSS 滿寬樣式
-  if (isCompact) {
-    applyMode(true, false);
+      }, 100);
+    });
   }
-
-  btnCompactWindow.addEventListener('click', () => {
-    applyMode(!isCompact, true);
-  });
 }
 
 /**
