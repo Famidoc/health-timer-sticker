@@ -37,7 +37,8 @@ body {
   background-color: var(--bg-dark);
   color: var(--text-primary);
   min-height: 100vh;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
 }
 
@@ -229,7 +230,9 @@ body::before {
 
 #desktop-view {
   display: block;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 100vh;
 }
 
 /* ==========================================================================
@@ -354,7 +357,7 @@ body::before {
 
 .sticker {
   position: absolute;
-  width: 250px;
+  width: 280px;
   min-height: 220px;
   padding: 16px;
   border-radius: 16px;
@@ -1107,7 +1110,8 @@ body::before {
    RWD 響應式中斷點
    ========================================================================== */
 
-@media (max-width: 768px) {
+/* 僅在觸控行動裝置 (pointer: coarse) 且螢幕寬度 <= 768px 時切換為行動版清單視圖 */
+@media (max-width: 768px) and (pointer: coarse) {
   #desktop-view {
     display: none;
   }

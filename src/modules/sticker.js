@@ -11,10 +11,10 @@ let currentSearchQuery = '';
  * 初始化便利貼模組
  */
 export function initStickers() {
-  stickers = loadStickers();
+  const loaded = loadStickers();
   
-  // 若儲存空間為空，自動恢復預設便利貼
-  if (!stickers || stickers.length === 0) {
+  // 若為首度使用（loadStickers 回傳 null），自動建立預設便利貼
+  if (loaded === null) {
     stickers = [
       {
         id: 'sticker_default_1',
@@ -23,7 +23,7 @@ export function initStickers() {
         todos: [],
         x: 40,
         y: 420,
-        width: 250,
+        width: 280,
         height: 220,
         color: 'blue',
         zIndex: 10
@@ -37,15 +37,17 @@ export function initStickers() {
           { id: 'todo_2', text: '再加', done: false },
           { id: 'todo_3', text: '可拖動排序！', done: false }
         ],
-        x: 310,
+        x: 340,
         y: 420,
-        width: 250,
+        width: 280,
         height: 220,
         color: 'pink',
         zIndex: 11
       }
     ];
     saveStickers(stickers);
+  } else {
+    stickers = loaded;
   }
 
   // 計算當前的最大 zIndex，避免重疊順序錯亂
@@ -100,20 +102,27 @@ function setupEvents() {
     });
   });
 
-  // 監聽視窗縮放，如果是大螢幕且有便利貼超出邊界，做一下適當的位移
+  // 跨視窗/跨分頁 LocalStorage 變更即時同步
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'health_stickers_data') {
+      const updated = loadStickers();
+      stickers = updated !== null ? updated : [];
+      renderAll();
+    }
+  });
+
+  // 監聽視窗縮放，如果有便利貼超出邊界，做適當位移
   window.addEventListener('resize', () => {
-    if (window.innerWidth > 768) {
-      let changed = false;
-      stickers.forEach(s => {
-        const maxX = window.innerWidth - (s.width || 250);
-        const maxY = window.innerHeight - (s.height || 220);
-        if (s.x > maxX && maxX > 0) { s.x = Math.max(10, maxX - 20); changed = true; }
-        if (s.y > maxY && maxY > 0) { s.y = Math.max(10, maxY - 20); changed = true; }
-      });
-      if (changed) {
-        saveStickers(stickers);
-        renderDesktopContainer();
-      }
+    let changed = false;
+    stickers.forEach(s => {
+      const maxX = window.innerWidth - (s.width || 280);
+      const maxY = window.innerHeight - (s.height || 220);
+      if (s.x > maxX && maxX > 0) { s.x = Math.max(10, maxX - 20); changed = true; }
+      if (s.y > maxY && maxY > 0) { s.y = Math.max(10, maxY - 20); changed = true; }
+    });
+    if (changed) {
+      saveStickers(stickers);
+      renderDesktopContainer();
     }
   });
 }
@@ -124,7 +133,7 @@ function setupEvents() {
 export function createNewSticker() {
   // 隨機在畫面中央偏左上位置產生，避免重疊
   const randomOffset = Math.floor(Math.random() * 60) - 30;
-  const x = Math.max(40, Math.floor(window.innerWidth / 2 - 125) + randomOffset);
+  const x = Math.max(40, Math.floor(window.innerWidth / 2 - 140) + randomOffset);
   const y = Math.max(40, Math.floor(window.innerHeight / 2 - 110) + randomOffset);
 
   const newSticker = {
@@ -136,7 +145,7 @@ export function createNewSticker() {
     ],
     x: x,
     y: y,
-    width: 250,
+    width: 280,
     height: 220,
     color: ['yellow', 'pink', 'blue', 'green', 'purple'][Math.floor(Math.random() * 5)],
     zIndex: ++maxZIndex

@@ -3,7 +3,7 @@ import { initStickers } from './modules/sticker.js';
 import { initAudio, unlockAudio, playAlarm, stopAlarm, setVolume } from './modules/audio.js';
 import { initTimer, resetTimer, startTimer } from './modules/timer.js';
 import { initStartup } from './modules/startup.js';
-import { loadSettings, saveSettings, loadLocalAudioFile, saveLocalAudioFile } from './modules/storage.js';
+import { loadSettings, saveSettings, loadLocalAudioFile, saveLocalAudioFile, loadControlPanelPosition, saveControlPanelPosition } from './modules/storage.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // 1. 初始化各模組
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', handleFirstInteraction);
   document.addEventListener('keydown', handleFirstInteraction);
 
-  // 3. 電腦版控制中心面板拖曳功能 (可在桌面任意移動)
+  // 3. 電腦版控制中心面板拖曳功能 (可在桌面任意移動並記憶位置)
   setupControlPanelDrag();
 
   // 4. 系統設定面板互動邏輯
@@ -68,11 +68,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * 實現電腦版控制中心面板的拖曳功能
+ * 實現電腦版控制中心面板的拖曳與位置記憶功能
  */
 function setupControlPanelDrag() {
   const panel = document.getElementById('control-panel');
   if (!panel) return;
+
+  // 載入先前儲存的位置 (若存在)
+  const savedPos = loadControlPanelPosition();
+  if (savedPos && typeof savedPos.x === 'number' && typeof savedPos.y === 'number') {
+    const rect = panel.getBoundingClientRect();
+    const maxX = Math.max(0, window.innerWidth - (rect.width || 280));
+    const maxY = Math.max(0, window.innerHeight - (rect.height || 400));
+    const safeX = Math.max(0, Math.min(savedPos.x, maxX));
+    const safeY = Math.max(0, Math.min(savedPos.y, maxY));
+
+    panel.style.left = `${safeX}px`;
+    panel.style.top = `${safeY}px`;
+    panel.style.right = 'auto';
+  }
 
   const dragHandle = panel.querySelector('.drag-handle');
   if (!dragHandle) return;
@@ -93,11 +107,11 @@ function setupControlPanelDrag() {
       let newLeft = initialLeft + dx;
       let newTop = initialTop + dy;
 
-      // 限制拖曳範圍在視窗內
-      const maxLeft = window.innerWidth - rect.width;
-      const maxTop = window.innerHeight - rect.height;
-      newLeft = Math.max(10, Math.min(newLeft, maxLeft - 10));
-      newTop = Math.max(10, Math.min(newTop, maxTop - 10));
+      // 限制拖曳範圍在視窗內 (邊界允許貼近 0px 頂端/左端)
+      const maxLeft = Math.max(0, window.innerWidth - rect.width);
+      const maxTop = Math.max(0, window.innerHeight - rect.height);
+      newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+      newTop = Math.max(0, Math.min(newTop, maxTop));
 
       panel.style.left = `${newLeft}px`;
       panel.style.top = `${newTop}px`;
@@ -107,6 +121,13 @@ function setupControlPanelDrag() {
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
+
+      // 儲存最新的控制中心位置
+      const currentRect = panel.getBoundingClientRect();
+      saveControlPanelPosition({
+        x: Math.round(currentRect.left),
+        y: Math.round(currentRect.top)
+      });
     };
 
     document.addEventListener('mousemove', onMouseMove);

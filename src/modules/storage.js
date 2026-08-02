@@ -9,6 +9,8 @@ const DEFAULT_SETTINGS = {
   volume: 0.5 // 預設 50%
 };
 
+const CONTROL_PANEL_POS_KEY = 'health_control_panel_pos';
+
 /**
  * 儲存所有便利貼資料到 LocalStorage
  * @param {Array} stickers - 便利貼資料陣列
@@ -19,11 +21,28 @@ export function saveStickers(stickers) {
 
 /**
  * 從 LocalStorage 載入所有便利貼資料
- * @returns {Array} 便利貼資料陣列
+ * @returns {Array|null} 便利貼資料陣列，若尚未初始化過則回傳 null
  */
 export function loadStickers() {
   const data = localStorage.getItem(STICKERS_KEY);
-  return data ? JSON.parse(data) : [];
+  return data !== null ? JSON.parse(data) : null;
+}
+
+/**
+ * 儲存控制中心面板位置
+ * @param {Object} pos - { x, y }
+ */
+export function saveControlPanelPosition(pos) {
+  localStorage.setItem(CONTROL_PANEL_POS_KEY, JSON.stringify(pos));
+}
+
+/**
+ * 從 LocalStorage 載入控制中心面板位置
+ * @returns {Object|null} { x, y }
+ */
+export function loadControlPanelPosition() {
+  const data = localStorage.getItem(CONTROL_PANEL_POS_KEY);
+  return data ? JSON.parse(data) : null;
 }
 
 /**
