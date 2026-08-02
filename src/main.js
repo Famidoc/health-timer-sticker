@@ -58,12 +58,37 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', handleFirstInteraction);
   document.addEventListener('keydown', handleFirstInteraction);
 
-  // 3. 電腦版控制中心面板拖曳功能 (可在桌面任意移動並記憶位置)
+  // 3. 桌面小視窗模式按鈕處理
+  setupCompactWindow();
+
+  // 4. 電腦版控制中心面板拖曳功能 (可在桌面任意移動並記憶位置)
   setupControlPanelDrag();
 
-  // 4. 系統設定面板互動邏輯
+  // 5. 系統設定面板互動邏輯
   setupSettingsEvents();
 });
+
+/**
+ * 實現開啟 300px 極窄獨立小視窗功能 (繞過 Chrome PWA 原生 500px 最小視窗限制)
+ */
+function setupCompactWindow() {
+  const btnCompactWindow = document.getElementById('btn-compact-window');
+  if (!btnCompactWindow) return;
+
+  btnCompactWindow.addEventListener('click', () => {
+    const width = 300;
+    const height = 680;
+    const left = Math.max(0, window.screen.width - width - 40);
+    const top = 40;
+
+    // 開啟 300px 極窄彈出視窗
+    window.open(
+      window.location.href,
+      'HealthTimerStickerWidget',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,status=no,toolbar=no,menubar=no,location=no`
+    );
+  });
+}
 
 /**
  * 實現電腦版控制中心面板的拖曳與位置記憶功能
