@@ -12,6 +12,19 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#10b981" />
+    <script>
+      (function(){
+        try {
+          var p = localStorage.getItem('health_control_panel_pos');
+          if (p) {
+            var pos = JSON.parse(p);
+            if (pos && typeof pos.x === 'number') {
+              document.write('<style>#control-panel{left:' + pos.x + 'px !important;top:' + pos.y + 'px !important;right:auto !important;}</style>');
+            }
+          }
+        } catch(e){}
+      })();
+    </script>
   </head>
   <body>
     <!-- 音訊播放器 -->
