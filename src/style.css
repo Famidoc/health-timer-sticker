@@ -182,11 +182,13 @@ body::before {
 
 /* 迎賓啟動卡片 */
 .welcome-card {
-  max-width: 450px;
-  padding: 40px;
+  width: 90%;
+  max-width: min(400px, 90vw);
+  padding: 24px 18px;
   text-align: center;
   transform: translateY(30px);
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-sizing: border-box;
 }
 
 .overlay.active .welcome-card {

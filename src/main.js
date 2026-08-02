@@ -28,10 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnStartApp) {
     btnStartApp.addEventListener('click', () => {
-      // 解鎖音訊 (AudioContext 限制)
       unlockAudio();
-      
-      // 請求系統桌面通知權限，以便於網頁在背景/最小化時也能提醒使用者
       if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission().then(() => {
           startApplication();
@@ -45,9 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 關鍵優化：如果先前已經有桌面通知權限，則不需等待使用者手動點擊「開始使用」按鈕，
-  // 而是直接跳過迎賓畫面，在背景/工作列自動啟動計時器。
-  if ('Notification' in window && Notification.permission === 'granted') {
+  // 判斷是否需要顯示迎賓卡片（若未獲通知權限才顯示；若已有權限則直接啟動）
+  if ('Notification' in window && Notification.permission !== 'granted') {
+    if (welcomeOverlay) welcomeOverlay.classList.add('active');
+  } else {
     startApplication();
   }
 
